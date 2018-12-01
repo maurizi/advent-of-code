@@ -1,5 +1,4 @@
-use std::collections::HashSet;
-use std::iter::FromIterator;
+#[macro_use] extern crate maplit;
 
 fn part1(input: &str) -> i32 {
     input.lines().map(|c| c.parse::<i32>().unwrap()).sum()
@@ -7,7 +6,7 @@ fn part1(input: &str) -> i32 {
 
 fn part2(input: &str) -> Option<i32> {
     let mut freq = 0;
-    let mut frequencies: HashSet<i32> = HashSet::from_iter([freq].iter().cloned());
+    let mut frequencies = hashset!{ freq };
     for chr in input.lines().cycle() {
         let num = chr.parse::<i32>().ok()?;
         freq += num;
