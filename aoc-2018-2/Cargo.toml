@@ -1,0 +1,6 @@
+[package]
+name = "aoc-2018-2"
+version = "0.1.0"
+authors = ["Michael Maurizi <mmaurizi@azavea.com>"]
+
+[dependencies]
