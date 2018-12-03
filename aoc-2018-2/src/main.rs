@@ -54,6 +54,7 @@ fn part2(input: &str) -> Option<(&str, &str, usize)> {
             let mut other_sets = vec!();
             other_sets.extend_from_slice(&matching_sets[0..i]);
             other_sets.extend_from_slice(&matching_sets[i+1..line_length]);
+
             let intersection = intersect(other_sets);
             if intersection.len() == 2 {
                 let other_line = *intersection.iter().filter(|n| **n != line_index).next()?;

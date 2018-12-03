@@ -3,7 +3,7 @@ struct Claim {
     left: usize,
     top: usize,
     width: usize,
-    height: usize
+    height: usize,
 }
 
 impl Claim {
@@ -15,51 +15,52 @@ impl Claim {
 
         Some(Claim {
             id: line[1..id_sep].parse().ok()?,
-            left: line[id_sep+3..left_sep].parse().ok()?,
-            top: line[left_sep+1..top_sep].parse().ok()?,
-            width: line[top_sep+2..width_sep].parse().ok()?,
-            height: line[width_sep+1..].parse().ok()?
+            left: line[id_sep + 3..left_sep].parse().ok()?,
+            top: line[left_sep + 1..top_sep].parse().ok()?,
+            width: line[top_sep + 2..width_sep].parse().ok()?,
+            height: line[width_sep + 1..].parse().ok()?,
         })
     }
 }
 
-fn part1(input: &str) -> Option<usize> {
+fn parse_claims(input: &str) -> Vec<Claim> {
+    input.lines().map(Claim::from_input).flatten().collect()
+}
+
+fn count_overlaps(claims: &Vec<Claim>) -> Vec<Vec<i32>> {
     let mut squares = vec![vec![0; 1000]; 1000];
 
-    for line in input.lines() {
-        let claim = Claim::from_input(line)?;
-        for i in claim.left .. claim.left + claim.width {
-            for j in claim.top .. claim.top + claim.height {
+    for claim in claims.iter() {
+        for i in claim.left..claim.left + claim.width {
+            for j in claim.top..claim.top + claim.height {
                 squares[i][j] += 1;
             }
         }
     }
+    squares
+}
+
+fn part1(input: &str) -> Option<usize> {
+    let claims = parse_claims(input);
+    let squares = count_overlaps(&claims);
 
     Some(squares.iter().flatten().filter(|count| **count > 1).count())
 }
 
 fn part2(input: &str) -> Option<Claim> {
-    let mut squares = vec![vec![0; 1000]; 1000];
-    let claims: Vec<Claim> = input.lines().map(Claim::from_input).flatten().collect();
-
-    for claim in claims.iter() {
-        for i in claim.left .. claim.left + claim.width {
-            for j in claim.top .. claim.top + claim.height {
-                squares[i][j] += 1;
-            }
-        }
-    }
+    let claims = parse_claims(input);
+    let squares = count_overlaps(&claims);
 
     'outer: for claim in claims {
-        for i in claim.left .. claim.left + claim.width {
-            for j in claim.top .. claim.top + claim.height {
+        for i in claim.left..claim.left + claim.width {
+            for j in claim.top..claim.top + claim.height {
                 if squares[i][j] != 1 {
                     continue 'outer;
                 }
             }
         }
-        // If we got here every square was 1
-        return Some(claim)
+        // If we got here every square was 1 for this claim
+        return Some(claim);
     }
 
     None
@@ -69,4 +70,22 @@ fn main() {
     let input = include_str!("input.txt").trim();
     println!("{:?}", part1(input));
     println!("{:?}", part2(input).unwrap().id);
+}
+
+#[test]
+fn test_part1() {
+    let input = "#1 @ 1,3: 4x4
+#2 @ 3,1: 4x4
+#3 @ 5,5: 2x2
+";
+    assert_eq!(part1(input).unwrap(), 4);
+}
+
+#[test]
+fn test_part2() {
+    let input = "#1 @ 1,3: 4x4
+#2 @ 3,1: 4x4
+#3 @ 5,5: 2x2
+";
+    assert_eq!(part2(input).unwrap().id, 3);
 }
