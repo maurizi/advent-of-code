@@ -10,6 +10,7 @@
 **/*.rs.bk
 
 .vscode/
+cmake-build-debug/
 */src/main
 *.iml
 .idea/
