@@ -27,13 +27,13 @@ fn parse_claims(input: &str) -> Vec<Claim> {
     input.lines().map(Claim::from_input).flatten().collect()
 }
 
-fn count_overlaps(claims: &Vec<Claim>) -> Vec<Vec<i32>> {
-    let mut squares = vec![vec![0; 1000]; 1000];
+fn get_overlaps(claims: &Vec<Claim>) -> Vec<Vec<Vec<u32>>> {
+    let mut squares = vec![vec![vec![]; 1000]; 1000];
 
     for claim in claims.iter() {
         for i in claim.left..claim.left + claim.width {
             for j in claim.top..claim.top + claim.height {
-                squares[i][j] += 1;
+                squares[i][j].push(claim.id);
             }
         }
     }
@@ -42,19 +42,19 @@ fn count_overlaps(claims: &Vec<Claim>) -> Vec<Vec<i32>> {
 
 fn part1(input: &str) -> Option<usize> {
     let claims = parse_claims(input);
-    let squares = count_overlaps(&claims);
+    let squares = get_overlaps(&claims);
 
-    Some(squares.iter().flatten().filter(|count| **count > 1).count())
+    Some(squares.iter().flatten().filter(|list| list.len() > 1).count())
 }
 
 fn part2(input: &str) -> Option<Claim> {
     let claims = parse_claims(input);
-    let squares = count_overlaps(&claims);
+    let squares = get_overlaps(&claims);
 
     'outer: for claim in claims {
         for i in claim.left..claim.left + claim.width {
             for j in claim.top..claim.top + claim.height {
-                if squares[i][j] != 1 {
+                if squares[i][j].len() != 1 {
                     continue 'outer;
                 }
             }
