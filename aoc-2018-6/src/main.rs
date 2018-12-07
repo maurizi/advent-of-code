@@ -25,7 +25,6 @@ fn part1(input: &str) -> Option<usize> {
         }
     }
 
-
     let mut infinite = HashSet::new();
     for i in 0..GRID_SIZE {
         let points = [(0, i), (i, 0), (GRID_SIZE - 1, i), (i, GRID_SIZE - 1)];
@@ -35,6 +34,7 @@ fn part1(input: &str) -> Option<usize> {
             }
         }
     }
+
     grid
         .iter()
         .flat_map(|f| f.iter())
@@ -57,10 +57,10 @@ fn part2(input: &str, threshold: i64) -> Option<usize> {
 
     for i in 0..GRID_SIZE {
         for j in 0..GRID_SIZE {
+
             grid[i][j] = points
                 .iter()
-                .enumerate()
-                .map(|(_, &point)| {
+                .map(|&point| {
                     let (x, y) = point;
                     (i as i64 - x as i64).abs() + (j as i64 - y as i64).abs()
                 })
@@ -68,12 +68,13 @@ fn part2(input: &str, threshold: i64) -> Option<usize> {
         }
     }
 
-    Some(grid.iter().flat_map(|f| f.iter()).filter(|cell| **cell > threshold).count())
+    Some(grid.iter().flat_map(|f| f.iter()).filter(|cell| **cell <threshold).count())
 }
 
 fn main() {
     let input = include_str!("input.txt");
     println!("{}", part1(input).unwrap());
+    println!("{}", part2(input, 10000).unwrap());
 }
 
 #[test]
