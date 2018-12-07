@@ -1,0 +1,7 @@
+[package]
+name = "aoc-2018-7"
+version = "0.1.0"
+authors = ["Michael Maurizi <mmaurizi@azavea.com>"]
+
+[dependencies]
+intrusive-collections = "0.7.8"
