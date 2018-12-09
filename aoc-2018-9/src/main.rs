@@ -1,18 +1,34 @@
+use std::collections::VecDeque;
+
+fn rotate_left<T>(marbles: &mut VecDeque<T>, amount: usize) {
+    (0..amount).for_each(|_| {
+        let tmp = marbles.pop_back().unwrap();
+        marbles.push_front(tmp);
+    } );
+}
+
+fn rotate_right<T>(marbles: &mut VecDeque<T>, amount: usize) {
+    (0..amount).for_each(|_| {
+        let tmp = marbles.pop_front().unwrap();
+        marbles.push_back(tmp);
+    } );
+}
+
 fn part1(players: usize, last_marble: usize) -> usize {
-    let mut marbles = Vec::with_capacity(last_marble);
-    marbles.push(0usize);
+    let mut marbles = VecDeque::with_capacity(last_marble);
+    marbles.push_front(0usize);
     let mut player_scores = vec![0; players];
 
     for turn in 1 ..= last_marble {
         let player = (turn - 1) % players;
         if turn % 23 != 0 {
-            marbles.rotate_left(1);
-            marbles.push(turn);
+            rotate_left(&mut marbles,1);
+            marbles.push_front(turn);
         } else {
-            marbles.rotate_right(7);
+            rotate_right(&mut marbles,7);
             player_scores[player] += turn;
-            player_scores[player] += marbles.pop().unwrap();
-            marbles.rotate_left(1);
+            player_scores[player] += marbles.pop_front().unwrap();
+            rotate_left(&mut marbles,1);
         }
     }
     player_scores.into_iter().max().unwrap()
