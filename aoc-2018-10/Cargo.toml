@@ -1,0 +1,10 @@
+[package]
+name = "aoc-2018-10"
+version = "0.1.0"
+authors = ["Michael Maurizi <mmaurizi@azavea.com>"]
+edition = "2018"
+
+[dependencies]
+lazy_static = "1"
+regex = "1"
+sprs = "0.6"
