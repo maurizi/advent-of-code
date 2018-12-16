@@ -1,92 +1,132 @@
-#[macro_use]
-extern crate nom;
+extern crate arrayvec;
+extern crate itertools;
 
+use std::iter::FromIterator;
 use std::collections::HashMap;
 use std::collections::VecDeque;
+use arrayvec::ArrayVec;
+use std::str::Bytes;
+use std::iter::Map;
+use std::fmt::Debug;
+use std::fmt::Formatter;
+use std::fmt::Error;
+use itertools::Itertools;
 
-#[derive(Debug, Clone)]
+const THRESHHOLD: usize = 10;
+
+#[derive(Clone)]
 struct Plants {
-    pots: VecDeque<bool>,
-    rules: HashMap<[bool; 5], bool>
+    min: isize,
+    max: isize,
+    pots: HashMap<isize, bool>,
+    rules: HashMap<ArrayVec<[bool; 5]>, bool>
 }
 
 impl Plants {
-    fn from_input(input: &str) -> Result<Plants, nom::Err<&str>> {
-        let (_, (pots, rules)) = parse_plants(input)?;
-        Ok(Plants {
-            pots: VecDeque::from(pots),
-            rules: rules.into_iter().collect()
-        })
+    fn pots_to_string(&self) -> String {
+        let pots = self.pots.iter().sorted_by_key(|(&i, p)| i);
+        pots.map(|(_, p)| if *p { '#' } else { '.' }).collect()
     }
 
-    fn age(&mut self) {
-        for _ in 0..2 {
-            self.pots.push_front(false);
-        }
-        for _ in 0..2 {
-            self.pots.push_back(false);
-        }
+    fn rules_to_string(&self) -> String {
+        self.rules.iter().map(|(input, output)| {
+            let in_str: String = input.iter().map(|p| if *p { '#' } else { '.' }).collect();
+            let out_str = if *output { "#" } else { "." };
+            in_str + " => " + out_str + "\n"
+        }).collect()
 
-        for i in 0..self.pots.len() {
-            let window = [
-                self.pots.get(i - 2).map(|b| *b).unwrap_or(false),
-                self.pots.get(i - 1).map(|b| *b).unwrap_or(false),
-                self.pots.get(i).map(|b| *b).unwrap_or(false),
-                self.pots.get(i + 1).map(|b| *b).unwrap_or(false),
-                self.pots.get(i + 2).map(|b| *b).unwrap_or(false),
-            ];
-            let rule_matches = self.rules.get(&window).map(|b| *b).unwrap_or(false);
-            self.pots[i] = rule_matches;
-        }
-
-        if self.pots[0] && self.pots[1] {
-            self.pots.pop_front();
-            self.pots.pop_front();
-        } else if self.pots[0] {
-            self.pots.pop_front();
-        }
-        let (second_last, last) = (self.pots[self.pots.len() - 2], self.pots[self.pots.len() - 1]);
-        if second_last && last {
-            self.pots.pop_back();
-            self.pots.pop_back();
-        } else if last {
-            self.pots.pop_back();
-        }
     }
 }
 
-named!(initial_list<&str, Vec<bool>>,
-    many1!(map!(take!(1), |ch| ch == "#"))
-);
+impl Debug for Plants {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
+        f.write_fmt(format_args!("initial state: {}\n\n{}", &self.pots_to_string(), self.rules_to_string()))
+    }
+}
 
-named!(rules_list<&str, Vec<([bool; 5], bool)>>,
-    many1!(
-        do_parse!(
-            input_and_output: separated_pair!(
-                count_fixed!(bool, map!(take!(1), |ch| ch == "#"), 5),
-                tag!(" => "),
-                map!(take!(1), |ch| ch == "#")
-            ) >>
-            tag!("\n") >>
+fn to_bool_list(input: &str) -> Map<Bytes, fn(u8) -> bool> {
+    input.bytes().map(|b| b == '#' as u8)
+}
 
-            (input_and_output)
-        )
-    )
-);
+fn to_enumerated_bools(input: &str) -> HashMap<isize, bool> {
+    to_bool_list(input)
+        .enumerate()
+        .map(|(i, p)| (i as isize, p))
+        .collect()
+}
 
-named!(parse_plants<&str, (Vec<bool>, Vec<([bool; 5], bool)>)>,
-    do_parse!(
-        tag!("initial state: ") >>
-        pots: initial_list >>
-        tag!("\n\n") >>
-        rules: rules_list >>
+impl Plants {
+    fn from_input(input: &str) -> Option<Plants> {
+        let lines: Vec<_> = input.lines().collect();
+        let pots = to_enumerated_bools(&lines[0][15..]);
+        let rules: HashMap<ArrayVec<[bool; 5]>, bool> = lines[2..].iter()
+            .map(|&line| (ArrayVec::from_iter(to_bool_list(&line[0..5])), &line[9..10] == "#"))
+            .collect();
+        let (&min, _) = pots.iter().min_by_key(|(&i, _)| i)?;
+        let (&max, _) = pots.iter().max_by_key(|(&i, _)| i)?;
 
-        ((pots, rules))
-    )
-);
+        Some(Plants { pots, rules, min, max })
+    }
+
+    fn age(&mut self) {
+        let mut new_pots = self.pots.clone();
+        for i in 1..3 {
+            self.pots.insert(self.min - i, false);
+            self.pots.insert(self.max + i, false);
+        }
+
+        for i in self.min - 2 ..= self.max + 2 {
+            let window = ArrayVec::from([
+                self.pots.get(&(i - 2)).unwrap_or(&false).clone(),
+                self.pots.get(&(i - 1)).unwrap_or(&false).clone(),
+                self.pots.get(&(i)).unwrap_or(&false).clone(),
+                self.pots.get(&(i + 1)).unwrap_or(&false).clone(),
+                self.pots.get(&(i + 2)).unwrap_or(&false).clone(),
+            ]);
+            let rule_matches = self.rules.get(&window).map(|b| *b).unwrap_or(false);
+            new_pots.insert(i, rule_matches);
+        }
+
+        for i in 1..3 {
+            if !new_pots[&(self.min - i)] {
+                new_pots.remove(&(self.min - i));
+            }
+            if !new_pots[&(self.max + i)] {
+                new_pots.remove(&(self.max + i));
+            }
+        }
+        let (&min, _) = new_pots.iter().min_by_key(|(&i, _)| i).unwrap();
+        let (&max, _) = new_pots.iter().max_by_key(|(&i, _)| i).unwrap();
+        self.min = min;
+        self.max = max;
+        self.pots = new_pots;
+    }
+}
+
+fn sum_of_plant_nums(input: &str, generations: usize) -> Option<isize> {
+    let mut plants = Plants::from_input(input)?;
+    let mut diffs = HashMap::new();
+    let mut last_sum = 0;
+    for i in 1..=generations {
+        plants.age();
+        let sum: isize = plants.pots.iter().filter(|(_, p)| **p).map(|(i, _)| *i).sum();
+
+        let diff = sum - last_sum;
+        let diff_count = diffs.entry(diff).or_insert(0);
+        if *diff_count > THRESHHOLD {
+            return Some((generations - i) as isize * diff + sum);
+        } else {
+            *diff_count += 1;
+        }
+        last_sum = sum;
+    }
+    Some(plants.pots.iter().filter(|(_, p)| **p).map(|(i, _)| *i).sum())
+}
 
 fn main() {
-    println!("Hello, world!");
+    let input = include_str!("input.txt");
+    println!("{:?}", sum_of_plant_nums(input, 20).unwrap());
+    println!("{:?}", sum_of_plant_nums(input, 50000000000).unwrap());
 }
 
 #[test]
@@ -110,7 +150,7 @@ fn test_parse() {
 ";
     let res = Plants::from_input(input);
     println!("{:?}", res);
-    assert_eq!(res.is_ok(), true);
+    assert_eq!(res.is_some(), true);
     let plants = res.unwrap();
     assert_eq!(plants.pots.len(), 25);
     assert_eq!(plants.rules.len(), 14);
@@ -136,9 +176,40 @@ fn test_generation() {
 ####. => #
 ";
     let mut plants = Plants::from_input(input).unwrap();
+    println!("{:?}", plants.pots_to_string());
 
-    let expected_output: Vec<_> = "...#..#.#..##......###...###...........".chars().map(|c| c == '3').collect();
+    let expected_output = to_enumerated_bools("#...#....#.....#..#..#..#");
 
     plants.age();
+    println!("{:?}", plants.pots_to_string());
     assert_eq!(plants.pots, expected_output);
+
+    let expected_output = to_enumerated_bools("##..##...##....#..#..#..##");
+
+    plants.age();
+    println!("{:?}", plants.pots_to_string());
+    assert_eq!(plants.pots, expected_output);
+}
+
+#[test]
+fn test_sum() {
+    let input = "initial state: #..#.#..##......###...###
+
+...## => #
+..#.. => #
+.#... => #
+.#.#. => #
+.#.## => #
+.##.. => #
+.#### => #
+#.#.# => #
+#.### => #
+##.#. => #
+##.## => #
+###.. => #
+###.# => #
+####. => #
+";
+    let sum = sum_of_plant_nums(input, 20);
+    assert_eq!(sum, Some(325));
 }
